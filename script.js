@@ -22,7 +22,7 @@ const images = {
     explosion: new Image()
 };
 
-// -------- ASIGNACIÓN DE RUTAS (.png.png) --------
+// ---------- ASIGNACIÓN DE RUTAS ----------
 images.car1_up.src = assetsPath + "cars/car1_up.png.png";
 images.car1_down.src = assetsPath + "cars/car1_down.png.png";
 images.car1_left.src = assetsPath + "cars/car1_left.png.png";
@@ -68,20 +68,31 @@ const map = [
 
 const passableTiles = ["road_horizontal","road_vertical","road_curve","road_T","road_cross","start","finish"];
 
+// ---------- SPAWN POINTS ----------
+const spawnPoints = [];
+map.forEach((row, r) => {
+    row.forEach((tile, c) => {
+        if(passableTiles.includes(tile)) {
+            spawnPoints.push({x: c*tileSize + 8, y: r*tileSize + 8});
+        }
+    });
+});
+
 // ---------- CARROS ----------
 let playerCar = {
-    x: tileSize * 1 + 8,
-    y: tileSize * 3 + 8,
+    x: spawnPoints[0].x,
+    y: spawnPoints[0].y,
     width: 50,
     height: 50,
     speed: 0,
     maxSpeed: 5,
-    sprite: images.car1_up
+    sprite: images.car1_up,
+    alive: true
 };
 
 let aiCar = {
-    x: tileSize * 1 + 8,
-    y: tileSize * 1 + 8,
+    x: spawnPoints[1].x,
+    y: spawnPoints[1].y,
     width: 50,
     height: 50,
     speed: 2,
@@ -100,7 +111,8 @@ document.addEventListener("keydown", e => {
     if("1579".includes(e.key)) {
         cheatSequence.push(e.key);
         if(cheatSequence.slice(-4).join("") === "1579") {
-            aiCar.alive = false; // explota
+            aiCar.alive = false;
+            setTimeout(respawnAI, 1000); // respawn tras 1s
         }
     }
 });
@@ -135,15 +147,27 @@ function updatePlayer() {
     }
 }
 
+// ---------- RESPAWN IA ----------
+function respawnAI() {
+    const validSpawns = spawnPoints.filter(sp => isPassable(sp.x, sp.y));
+    const spawn = validSpawns[Math.floor(Math.random() * validSpawns.length)];
+    aiCar.x = spawn.x;
+    aiCar.y = spawn.y;
+    aiCar.sprite = images.car2_right;
+    aiCar.alive = true;
+}
+
 // ---------- MOVIMIENTO IA ----------
 function updateAI() {
     if(!aiCar.alive) return;
+
     let directions = [
         {dx: aiCar.speed, dy: 0, sprite: images.car2_right},
         {dx: 0, dy: aiCar.speed, sprite: images.car2_down},
         {dx: -aiCar.speed, dy: 0, sprite: images.car2_left},
         {dx: 0, dy: -aiCar.speed, sprite: images.car2_up}
     ];
+
     for(let dir of directions) {
         let nextX = aiCar.x + dir.dx;
         let nextY = aiCar.y + dir.dy;
@@ -177,7 +201,6 @@ function drawMap() {
 // ---------- DIBUJAR CARRO ----------
 function drawCar(car){
     if(car.alive===false){
-        // Dibujar explosión
         ctx.drawImage(images.explosion, car.x, car.y, car.width, car.height);
         return;
     }
