@@ -1,94 +1,81 @@
+// ---------- CARGA DE IMÁGENES ----------
+const assetsPath = "assets/";
+
+const images = {
+    // Carros
+    car1_up: new Image(),
+    car1_down: new Image(),
+    car1_left: new Image(),
+    car1_right: new Image(),
+    car2_up: new Image(),
+    car2_down: new Image(),
+    car2_left: new Image(),
+    car2_right: new Image(),
+
+    // Sombra del carro
+    shadow: new Image(),
+
+    // Carreteras
+    road_horizontal: new Image(),
+    road_vertical: new Image(),
+    road_curve: new Image(),
+    road_T: new Image(),
+    road_cross: new Image(),
+
+    // Efecto de explosión
+    explosion: new Image()
+};
+
+// -------- ASIGNACIÓN DE RUTAS (.png.png) --------
+images.car1_up.src = assetsPath + "cars/car1_up.png.png";
+images.car1_down.src = assetsPath + "cars/car1_down.png.png";
+images.car1_left.src = assetsPath + "cars/car1_left.png.png";
+images.car1_right.src = assetsPath + "cars/car1_right.png.png";
+
+images.car2_up.src = assetsPath + "cars/car2_up.png.png";
+images.car2_down.src = assetsPath + "cars/car2_down.png.png";
+images.car2_left.src = assetsPath + "cars/car2_left.png.png";
+images.car2_right.src = assetsPath + "cars/car2_right.png.png";
+
+// Sombra
+images.shadow.src = assetsPath + "effects/car_shadow.png.png";
+
+// Carreteras
+images.road_horizontal.src = assetsPath + "road/road_horizontal.png.png";
+images.road_vertical.src = assetsPath + "road/road_vertical.png.png";
+images.road_curve.src = assetsPath + "road/road_curve.png.png";
+images.road_T.src = assetsPath + "road/road_T.png.png";
+images.road_cross.src = assetsPath + "road/road_cross.png.png";
+
+// Explosión (spritesheet)
+images.explosion.src = assetsPath + "effects/explosion.png.png";
+
+
+// ---------- CANVAS ----------
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// ====== LOAD IMAGES (CON RUTAS REALES Y .png.png) ======
+// Posición inicial del carro 1
+let car = {
+    x: 200,
+    y: 200,
+    angle: 0,
+    speed: 2,
+    sprite: images.car1_up
+};
 
-const car1 = new Image();
-car1.src = "assets/cars/car1_up.png.png";
 
-const car2 = new Image();
-car2.src = "assets/cars/car2_up.png.png";
-
-const shadow = new Image();
-shadow.src = "assets/cars/car_shadow.png.png"; // si no existe, borra esta línea
-
-// Road tiles
-const road_horizontal = new Image();
-road_horizontal.src = "assets/road/road_horizontal.png.png";
-
-const road_vertical = new Image();
-road_vertical.src = "assets/road/road_vertical.png.png";
-
-const road_curve = new Image();
-road_curve.src = "assets/road/road_curve.png.png";
-
-const road_T = new Image();
-road_T.src = "assets/road/road_T.png.png";
-
-const road_cross = new Image();
-road_cross.src = "assets/road/road_cross.png.png";
-
-// Decorations
-const tree = new Image();
-tree.src = "assets/decoration/tree.png.png";
-
-const rock = new Image();
-rock.src = "assets/decoration/rock.png.png";
-
-const border = new Image();
-border.src = "assets/decoration/road_border.png.png";
-
-// Explosion (sprite sheet 3×3)
-const explosionSheet = new Image();
-explosionSheet.src = "assets/effects/explosion.png.png";
-
-let explosionFrame = 0;
-
-// ====== GAME STATE ======
-
-let car1X = 100;
-let car1Y = 200;
-
-let car2X = 200;
-let car2Y = 50;
-
-function drawExplosion(x, y) {
-    const frameSize = 128; // tu sprite debe ser 3x3 cada cuadro igual tamaño
-    const col = explosionFrame % 3;
-    const row = Math.floor(explosionFrame / 3);
-
-    ctx.drawImage(
-        explosionSheet,
-        col * frameSize,
-        row * frameSize,
-        frameSize,
-        frameSize,
-        x,
-        y,
-        frameSize,
-        frameSize
-    );
-
-    explosionFrame++;
-    if (explosionFrame > 8) explosionFrame = 0;
-}
-
-function drawRoad() {
-    ctx.drawImage(road_horizontal, 0, 250, 800, 100);
-    ctx.drawImage(road_vertical, 350, 0, 100, 600);
-}
-
-function drawCars() {
-    ctx.drawImage(car1, car1X, car1Y, 60, 60);
-    ctx.drawImage(car2, car2X, car2Y, 60, 60);
-}
-
+// ---------- LOOP PRINCIPAL ----------
 function loop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    drawRoad();
-    drawCars();
-    drawExplosion(350, 200);
+    // ---- DIBUJAR SOMBRA PRIMERO ----
+    ctx.globalAlpha = 0.45; // transparencia de la sombra
+    ctx.drawImage(images.shadow, car.x - 5, car.y + 20, 50, 25);
+    ctx.globalAlpha = 1.0; // reset
+
+    // ---- DIBUJAR CARRO ----
+    ctx.drawImage(car.sprite, car.x, car.y, 50, 50);
 
     requestAnimationFrame(loop);
 }
