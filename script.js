@@ -15,7 +15,7 @@ const images = {
     // Sombra
     shadow: new Image(),
 
-    // Carretera
+    // Carretera (no usada todavía)
     road_horizontal: new Image(),
     road_vertical: new Image(),
     road_curve: new Image(),
@@ -52,11 +52,9 @@ images.road_cross.src = assetsPath + "road/road_cross.png.png";
 // Explosión (spritesheet)
 images.explosion.src = assetsPath + "effects/explosion.png.png";
 
-
 // ---------- CANVAS ----------
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-
 
 // ---------- CARRO ----------
 let car = {
@@ -64,7 +62,7 @@ let car = {
     y: 300,
     width: 50,
     height: 50,
-    angle: 0,
+    angle: 90, // <--- Corregido: el sprite "up" apunta a la izquierda, ahora apunta hacia arriba
     speed: 0,
     maxSpeed: 5,
     accel: 0.15,
@@ -72,13 +70,10 @@ let car = {
     sprite: images.car1_up
 };
 
-
 // ---------- TECLAS ----------
 let keys = {};
-
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
-
 
 // ---------- ACTUALIZAR MOVIMIENTO DEL CARRO ----------
 function updateCar() {
@@ -118,7 +113,6 @@ function updateCar() {
     car.y += Math.sin(rad) * car.speed;
 }
 
-
 // ---------- DIBUJAR CARRO ----------
 function drawCar() {
 
@@ -134,7 +128,6 @@ function drawCar() {
     ctx.drawImage(car.sprite, -car.width / 2, -car.height / 2, car.width, car.height);
     ctx.restore();
 }
-
 
 // ---------- LOOP PRINCIPAL ----------
 function loop() {
