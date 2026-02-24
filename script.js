@@ -54,6 +54,9 @@ const map = [
     ["road_cross","road_horizontal","road_horizontal","road_T","road_vertical","road_vertical","road_vertical","road_curve","road_horizontal","road_horizontal","road_horizontal","road_cross"]
 ];
 
+// Tiles pasables (solo carretera)
+const passableTiles = ["road_horizontal","road_vertical","road_curve","road_T","road_cross"];
+
 // ---------- CARRO ----------
 let car = {
     x: tileSize * 1 + 8,
@@ -70,6 +73,17 @@ let keys = {};
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
+// ---------- FUNCIÓN PARA CHEQUEAR PASABLE ----------
+function isPassable(x, y) {
+    const col = Math.floor(x / tileSize);
+    const row = Math.floor(y / tileSize);
+
+    if(row < 0 || row >= map.length || col < 0 || col >= map[0].length) return false;
+
+    const tile = map[row][col];
+    return passableTiles.includes(tile);
+}
+
 // ---------- ACTUALIZAR MOVIMIENTO ----------
 function updateCar() {
     let nextX = car.x;
@@ -80,9 +94,19 @@ function updateCar() {
     if(keys["ArrowLeft"]) { car.sprite = images.car1_left; nextX -= car.maxSpeed; }
     if(keys["ArrowRight"]) { car.sprite = images.car1_right; nextX += car.maxSpeed; }
 
-    // Limitar dentro del canvas
-    if(nextX >= 0 && nextX + car.width <= canvas.width) car.x = nextX;
-    if(nextY >= 0 && nextY + car.height <= canvas.height) car.y = nextY;
+    // Solo moverse si los cuatro vértices del carro están sobre tiles pasables
+    const corners = [
+        [nextX, nextY],
+        [nextX + car.width, nextY],
+        [nextX, nextY + car.height],
+        [nextX + car.width, nextY + car.height]
+    ];
+
+    let canMove = corners.every(c => isPassable(c[0], c[1]));
+    if(canMove){
+        car.x = nextX;
+        car.y = nextY;
+    }
 }
 
 // ---------- DIBUJAR MAPA ----------
@@ -92,7 +116,7 @@ function drawMap() {
             const tile = map[row][col];
             if(images[tile]) ctx.drawImage(images[tile], col * tileSize, row * tileSize, tileSize, tileSize);
 
-            // Dibuja borde rojo feo para que se vea el tile
+            // Borde rojo para visualización (feísimo)
             ctx.strokeStyle = "red";
             ctx.strokeRect(col*tileSize, row*tileSize, tileSize, tileSize);
         }
@@ -101,12 +125,10 @@ function drawMap() {
 
 // ---------- DIBUJAR CARRO ----------
 function drawCar() {
-    // Sombra
     ctx.globalAlpha = 0.45;
     ctx.drawImage(images.shadow, car.x - 10, car.y + 25, 60, 30);
     ctx.globalAlpha = 1;
 
-    // Carro
     ctx.drawImage(car.sprite, car.x, car.y, car.width, car.height);
 }
 
