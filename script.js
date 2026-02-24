@@ -69,9 +69,9 @@ const passableTiles = ["road_horizontal","road_vertical","road_curve","road_T","
 
 // ---------- SPAWN POINTS ----------
 const spawnPoints = [];
-map.forEach((row, r) => {
-    row.forEach((tile, c) => {
-        if(passableTiles.includes(tile)) spawnPoints.push({x: c*tileSize+8, y: r*tileSize+8});
+map.forEach((row,r)=>{
+    row.forEach((tile,c)=>{
+        if(passableTiles.includes(tile)) spawnPoints.push({x:c*tileSize+8,y:r*tileSize+8});
     });
 });
 
@@ -79,36 +79,35 @@ map.forEach((row, r) => {
 let playerCar = {
     x: spawnPoints[0].x,
     y: spawnPoints[0].y,
-    width: 50,
-    height: 50,
-    speed: 0,
-    maxSpeed: 5,
-    sprite: images.car1_up,
-    alive: true
+    width:50,
+    height:50,
+    maxSpeed:5,
+    sprite:images.car1_up,
+    alive:true
 };
 
 let aiCars = [
-    { x: spawnPoints[1].x, y: spawnPoints[1].y, width: 50, height: 50, speed: 2, sprite: images.car2_right, alive: true},
-    { x: spawnPoints[2].x, y: spawnPoints[2].y, width: 50, height: 50, speed: 2, sprite: images.car1_right, alive: true},
-    { x: spawnPoints[3].x, y: spawnPoints[3].y, width: 50, height: 50, speed: 2, sprite: images.car2_right, alive: true}
+    {x:spawnPoints[1].x,y:spawnPoints[1].y,width:50,height:50,speed:2,sprite:images.car2_right,alive:true},
+    {x:spawnPoints[2].x,y:spawnPoints[2].y,width:50,height:50,speed:2,sprite:images.car1_right,alive:true},
+    {x:spawnPoints[3].x,y:spawnPoints[3].y,width:50,height:50,speed:2,sprite:images.car2_right,alive:true}
 ];
 
 // ---------- DIRECCIONES IA ----------
-let aiDirections = aiCars.map(ai => ({dx: ai.speed, dy:0, sprite: ai.sprite}));
+let aiDirections = aiCars.map(ai=>({dx:ai.speed,dy:0,sprite:ai.sprite}));
 
 // ---------- TECLAS ----------
 let keys = {};
-document.addEventListener("keydown", e => keys[e.key]=true);
-document.addEventListener("keyup", e => keys[e.key]=false);
+document.addEventListener("keydown",e=>keys[e.key]=true);
+document.addEventListener("keyup",e=>keys[e.key]=false);
 
-// ---------- COMANDO SECRETO 1579 ----------
-let cheatSequence = [];
-document.addEventListener("keydown", e => {
+// ---------- COMANDO SECRETO ----------
+let cheatSequence=[];
+document.addEventListener("keydown", e=>{
     if("1579".includes(e.key)){
         cheatSequence.push(e.key);
         if(cheatSequence.slice(-4).join("")==="1579"){
-            aiCars.forEach(ai => ai.alive=false);
-            setTimeout(() => aiCars.forEach((ai,i)=>respawnAI(ai,i)), 1000);
+            aiCars.forEach(ai=>ai.alive=false);
+            setTimeout(()=>aiCars.forEach((ai,i)=>respawnAI(ai,i)),1000);
         }
     }
 });
@@ -124,8 +123,7 @@ function isPassable(x,y){
 // ---------- MOVIMIENTO PLAYER ----------
 function updatePlayer(){
     if(!playerCar.alive) return;
-    let nextX = playerCar.x;
-    let nextY = playerCar.y;
+    let nextX=playerCar.x, nextY=playerCar.y;
     if(keys["ArrowUp"]){playerCar.sprite=images.car1_up; nextY-=playerCar.maxSpeed;}
     if(keys["ArrowDown"]){playerCar.sprite=images.car1_down; nextY+=playerCar.maxSpeed;}
     if(keys["ArrowLeft"]){playerCar.sprite=images.car1_left; nextX-=playerCar.maxSpeed;}
@@ -140,54 +138,60 @@ function updatePlayer(){
 function respawnAI(aiCar, spawnIndex){
     const spawn=spawnPoints[spawnIndex%spawnPoints.length];
     aiCar.x=spawn.x; aiCar.y=spawn.y; aiCar.alive=true;
-    aiDirections[aiCars.indexOf(aiCar)]={dx:aiCar.speed, dy:0, sprite:aiCar.sprite};
+    aiDirections[aiCars.indexOf(aiCar)]={dx:aiCar.speed,dy:0,sprite:aiCar.sprite};
 }
+
 function respawnPlayer(){
-    const spawn = spawnPoints[0];
+    // Buscar spawn lejos de IAs
+    let safeSpawns = spawnPoints.filter(sp=>{
+        return aiCars.every(ai=>{
+            const dx = Math.abs(sp.x - ai.x);
+            const dy = Math.abs(sp.y - ai.y);
+            return dx>tileSize*2 && dy>tileSize*2;
+        });
+    });
+    const spawn = safeSpawns[Math.floor(Math.random()*safeSpawns.length)];
     playerCar.x=spawn.x; playerCar.y=spawn.y; playerCar.alive=true;
     playerCar.sprite=images.car1_up;
 }
 
-// ---------- MOVIMIENTO IA SIGUIENDO JUGADOR ----------
+// ---------- MOVIMIENTO IA INTELIGENTE ----------
 function updateAI(aiCar, aiIndex){
     if(!aiCar.alive) return;
-    // dirección hacia jugador
     const dx = playerCar.x - aiCar.x;
     const dy = playerCar.y - aiCar.y;
-    let moveX = 0, moveY = 0;
-    let spriteDir = aiCar.sprite;
+    let moveX=0, moveY=0, spriteDir=aiCar.sprite;
     if(Math.abs(dx)>Math.abs(dy)){
         moveX = dx>0 ? aiCar.speed : -aiCar.speed;
         spriteDir = dx>0 ? images.car2_right : images.car2_left;
-    }else{
+    } else {
         moveY = dy>0 ? aiCar.speed : -aiCar.speed;
         spriteDir = dy>0 ? images.car2_down : images.car2_up;
     }
-    const nextX=aiCar.x+moveX;
-    const nextY=aiCar.y+moveY;
+    const nextX=aiCar.x+moveX, nextY=aiCar.y+moveY;
     const corners=[[nextX,nextY],[nextX+aiCar.width,nextY],[nextX,nextY+aiCar.height],[nextX+aiCar.width,nextY+aiCar.height]];
     if(corners.every(c=>isPassable(c[0],c[1]))){
         aiCar.x=nextX; aiCar.y=nextY; aiCar.sprite=spriteDir;
-    }else{
-        // intentar otra dirección aleatoria
+    } else {
+        // Rodear obstáculo: prueba todas las direcciones válidas
         const dirs=[
             {dx:aiCar.speed,dy:0,sprite:images.car2_right},
             {dx:-aiCar.speed,dy:0,sprite:images.car2_left},
             {dx:0,dy:aiCar.speed,sprite:images.car2_down},
             {dx:0,dy:-aiCar.speed,sprite:images.car2_up}
         ];
-        const validDirs=dirs.filter(d=>{
+        const validDirs = dirs.filter(d=>{
             const nx=aiCar.x+d.dx, ny=aiCar.y+d.dy;
             return [[nx,ny],[nx+aiCar.width,ny],[nx,ny+aiCar.height],[nx+aiCar.width,ny+aiCar.height]].every(c=>isPassable(c[0],c[1]));
         });
         if(validDirs.length>0){
-            const d=validDirs[Math.floor(Math.random()*validDirs.length)];
+            const d = validDirs[Math.floor(Math.random()*validDirs.length)];
             aiDirections[aiIndex]=d;
             aiCar.x+=d.dx; aiCar.y+=d.dy; aiCar.sprite=d.sprite;
         }
     }
 
-    // ---------- DETECCIÓN COLISIÓN CON JUGADOR ----------
+    // ---------- COLISIÓN CON JUGADOR ----------
     if(aiCar.alive && playerCar.alive){
         const collide = !(playerCar.x + playerCar.width < aiCar.x ||
                           playerCar.x > aiCar.x + aiCar.width ||
