@@ -53,7 +53,7 @@ canvas.width = 768;
 canvas.height = 512;
 const ctx = canvas.getContext("2d");
 
-// ---------- TILEMAP DE LA PISTA ----------
+// ---------- TILEMAP ----------
 const tileSize = 64;
 const map = [
     ["start","road_horizontal","road_horizontal","road_horizontal","road_T","road_vertical","road_vertical","road_vertical","road_curve","road_horizontal","road_horizontal","finish"],
@@ -90,7 +90,8 @@ let playerCar = {
     alive: true
 };
 
-let aiCar = {
+// --- IA1 (original) ---
+let aiCar1 = {
     x: spawnPoints[1].x,
     y: spawnPoints[1].y,
     width: 50,
@@ -99,6 +100,35 @@ let aiCar = {
     sprite: images.car2_right,
     alive: true
 };
+
+// --- IA2 (tu color, rojo) ---
+let aiCar2 = {
+    x: spawnPoints[2].x,
+    y: spawnPoints[2].y,
+    width: 50,
+    height: 50,
+    speed: 2,
+    sprite: images.car1_right,
+    alive: true
+};
+
+// --- IA3 (otro color, azul) ---
+let aiCar3 = {
+    x: spawnPoints[3].x,
+    y: spawnPoints[3].y,
+    width: 50,
+    height: 50,
+    speed: 2,
+    sprite: images.car2_right,
+    alive: true
+};
+
+// ---------- DIRECCIONES IA ----------
+let aiDirections = [
+    {dx: aiCar1.speed, dy: 0, sprite: aiCar1.sprite},
+    {dx: aiCar2.speed, dy: 0, sprite: aiCar2.sprite},
+    {dx: aiCar3.speed, dy: 0, sprite: aiCar3.sprite}
+];
 
 // ---------- TECLAS ----------
 let keys = {};
@@ -111,8 +141,12 @@ document.addEventListener("keydown", e => {
     if("1579".includes(e.key)) {
         cheatSequence.push(e.key);
         if(cheatSequence.slice(-4).join("") === "1579") {
-            aiCar.alive = false;
-            setTimeout(respawnAI, 1000); // respawn tras 1s
+            [aiCar1, aiCar2, aiCar3].forEach(ai => { ai.alive = false; });
+            setTimeout(() => {
+                respawnAI(aiCar1, 0);
+                respawnAI(aiCar2, 1);
+                respawnAI(aiCar3, 2);
+            }, 1000);
         }
     }
 });
@@ -148,40 +182,57 @@ function updatePlayer() {
 }
 
 // ---------- RESPAWN IA ----------
-function respawnAI() {
+function respawnAI(aiCar, spawnIndex) {
     const validSpawns = spawnPoints.filter(sp => isPassable(sp.x, sp.y));
-    const spawn = validSpawns[Math.floor(Math.random() * validSpawns.length)];
+    const spawn = validSpawns[spawnIndex % validSpawns.length];
     aiCar.x = spawn.x;
     aiCar.y = spawn.y;
-    aiCar.sprite = images.car2_right;
     aiCar.alive = true;
+    aiDirections[[aiCar1, aiCar2, aiCar3].indexOf(aiCar)] = {dx: aiCar.speed, dy:0, sprite: aiCar.sprite};
 }
 
-// ---------- MOVIMIENTO IA ----------
-function updateAI() {
+// ---------- MOVIMIENTO IA MEJORADO ----------
+function updateAI(aiCar, aiIndex) {
     if(!aiCar.alive) return;
 
-    let directions = [
-        {dx: aiCar.speed, dy: 0, sprite: images.car2_right},
-        {dx: 0, dy: aiCar.speed, sprite: images.car2_down},
-        {dx: -aiCar.speed, dy: 0, sprite: images.car2_left},
-        {dx: 0, dy: -aiCar.speed, sprite: images.car2_up}
+    let dir = aiDirections[aiIndex];
+    let nextX = aiCar.x + dir.dx;
+    let nextY = aiCar.y + dir.dy;
+
+    const corners = [
+        [nextX, nextY],
+        [nextX + aiCar.width, nextY],
+        [nextX, nextY + aiCar.height],
+        [nextX + aiCar.width, nextY + aiCar.height]
     ];
 
-    for(let dir of directions) {
-        let nextX = aiCar.x + dir.dx;
-        let nextY = aiCar.y + dir.dy;
-        const corners = [
-            [nextX, nextY],
-            [nextX + aiCar.width, nextY],
-            [nextX, nextY + aiCar.height],
-            [nextX + aiCar.width, nextY + aiCar.height]
+    if(corners.every(c => isPassable(c[0], c[1]))) {
+        aiCar.x = nextX;
+        aiCar.y = nextY;
+        aiCar.sprite = dir.sprite;
+    } else {
+        const directions = [
+            {dx: aiCar.speed, dy: 0, sprite: aiCar.sprite},
+            {dx: 0, dy: aiCar.speed, sprite: aiCar.sprite},
+            {dx: -aiCar.speed, dy: 0, sprite: aiCar.sprite},
+            {dx: 0, dy: -aiCar.speed, sprite: aiCar.sprite}
         ];
-        if(corners.every(c => isPassable(c[0], c[1]))) {
-            aiCar.x = nextX;
-            aiCar.y = nextY;
-            aiCar.sprite = dir.sprite;
-            break;
+        const validDirs = directions.filter(d => {
+            const nx = aiCar.x + d.dx;
+            const ny = aiCar.y + d.dy;
+            return [
+                [nx, ny],
+                [nx + aiCar.width, ny],
+                [nx, ny + aiCar.height],
+                [nx + aiCar.width, ny + aiCar.height]
+            ].every(c => isPassable(c[0], c[1]));
+        });
+        if(validDirs.length > 0) {
+            const newDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+            aiDirections[aiIndex] = newDir;
+            aiCar.x += newDir.dx;
+            aiCar.y += newDir.dy;
+            aiCar.sprite = newDir.sprite;
         }
     }
 }
@@ -200,13 +251,13 @@ function drawMap() {
 
 // ---------- DIBUJAR CARRO ----------
 function drawCar(car){
-    if(car.alive===false){
+    if(!car.alive){
         ctx.drawImage(images.explosion, car.x, car.y, car.width, car.height);
         return;
     }
-    ctx.globalAlpha=0.45;
+    ctx.globalAlpha = 0.45;
     ctx.drawImage(images.shadow, car.x-10, car.y+25, 60, 30);
-    ctx.globalAlpha=1;
+    ctx.globalAlpha = 1;
     ctx.drawImage(car.sprite, car.x, car.y, car.width, car.height);
 }
 
@@ -215,9 +266,13 @@ function loop(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     drawMap();
     updatePlayer();
-    updateAI();
+    updateAI(aiCar1, 0);
+    updateAI(aiCar2, 1);
+    updateAI(aiCar3, 2);
     drawCar(playerCar);
-    drawCar(aiCar);
+    drawCar(aiCar1);
+    drawCar(aiCar2);
+    drawCar(aiCar3);
     requestAnimationFrame(loop);
 }
 loop();
