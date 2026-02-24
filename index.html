@@ -1,71 +1,74 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Racing Game</title>
-<style>
-    body { margin:0; padding:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh; color:#fff; font-family:sans-serif; }
-    #gameCanvas { display:none; background:#333; }
-    #loadingScreen { text-align:center; }
-    #loadingScreen h1 { font-size:2em; margin-bottom:20px; }
-    #loadingScreen p { font-size:1.2em; color:#ff0; }
-    #loadingScreen img { max-width: 400px; width: 80%; height:auto; margin-bottom:20px; border:3px solid #fff; }
-</style>
-</head>
-<body>
-
-<div id="loadingScreen">
-    <img src="portada.png.png" alt="Portada del juego">
-    <h1>Racing Game</h1>
-    <p>Presiona ENTER para empezar</p>
-</div>
-
-<canvas id="gameCanvas" width="768" height="512"></canvas>
-
 <script>
-// ---------- PANTALLA DE CARGA ----------
+// ---------- ESPERAR CARGA DE IMÁGENES ----------
+function loadImages(imageObj, callback){
+    const keys = Object.keys(imageObj);
+    let loaded = 0;
+    keys.forEach(k=>{
+        imageObj[k].onload = ()=>{
+            loaded++;
+            if(loaded === keys.length) callback();
+        }
+    });
+}
+
+// ---------- PANTALLA DE PORTADA ----------
 const loadingScreen = document.getElementById("loadingScreen");
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 let gameStarted = false;
 
-document.addEventListener("keydown", e => {
-    if(e.key === "Enter" && !gameStarted){
+// Espera ENTER solo después de que se carguen las imágenes
+document.addEventListener("keydown", e=>{
+    if(e.key === "Enter" && !gameStarted && imagesLoaded){
         gameStarted = true;
-        loadingScreen.style.display = "none";
-        canvas.style.display = "block";
-        loop(); // iniciar el juego
+        loadingScreen.style.display="none";
+        canvas.style.display="block";
+        loop();
     }
 });
 
-// ---------- EJEMPLO DE JUEGO ----------
-const tileSize = 64;
-let player = {x:100, y:100, width:50, height:50};
+let imagesLoaded = false;
 
-function updatePlayer(){
-    if(keys["ArrowUp"]) player.y -= 5;
-    if(keys["ArrowDown"]) player.y +=5;
-    if(keys["ArrowLeft"]) player.x -=5;
-    if(keys["ArrowRight"]) player.x +=5;
-}
+// ---------- CARGA DE IMÁGENES ----------
+const assetsPath = "assets/";
+const images = {
+    car1_up: new Image(), car1_down: new Image(), car1_left: new Image(), car1_right: new Image(),
+    car2_up: new Image(), car2_down: new Image(), car2_left: new Image(), car2_right: new Image(),
+    shadow: new Image(),
+    road_horizontal: new Image(), road_vertical: new Image(), road_curve: new Image(), road_T: new Image(), road_cross: new Image(),
+    tree: new Image(), rock: new Image(), road_border: new Image(),
+    explosion: new Image()
+};
 
-let keys = {};
-document.addEventListener("keydown", e=>keys[e.key]=true);
-document.addEventListener("keyup", e=>keys[e.key]=false);
+// --- asignar src ---
+images.car1_up.src = assetsPath + "cars/car1_up.png.png";
+images.car1_down.src = assetsPath + "cars/car1_down.png.png";
+images.car1_left.src = assetsPath + "cars/car1_left.png.png";
+images.car1_right.src = assetsPath + "cars/car1_right.png.png";
 
-function drawPlayer(){
-    ctx.fillStyle = "red";
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-}
+images.car2_up.src = assetsPath + "cars/car2_up.png.png";
+images.car2_down.src = assetsPath + "cars/car2_down.png.png";
+images.car2_left.src = assetsPath + "cars/car2_left.png.png";
+images.car2_right.src = assetsPath + "cars/car2_right.png.png";
 
-function loop(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    updatePlayer();
-    drawPlayer();
-    requestAnimationFrame(loop);
-}
+images.shadow.src = assetsPath + "effects/car_shadow.png.png";
+
+images.road_horizontal.src = assetsPath + "road/road_horizontal.png.png";
+images.road_vertical.src = assetsPath + "road/road_vertical.png.png";
+images.road_curve.src = assetsPath + "road/road_curve.png.png";
+images.road_T.src = assetsPath + "road/road_T.png.png";
+images.road_cross.src = assetsPath + "road/road_cross.png.png";
+
+images.tree.src = assetsPath + "decoration/tree.png.png";
+images.rock.src = assetsPath + "decoration/rock.png.png";
+images.road_border.src = assetsPath + "decoration/road_border.png.png";
+
+images.explosion.src = assetsPath + "effects/explosion.png.png";
+
+// --- Cuando todas las imágenes carguen, activamos ENTER ---
+loadImages(images, ()=>{
+    imagesLoaded = true;
+    console.log("¡Todas las imágenes cargadas! Presiona ENTER para empezar.");
+});
 </script>
-
-</body>
-</html>
