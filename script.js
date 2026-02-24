@@ -15,7 +15,7 @@ const images = {
     // Sombra
     shadow: new Image(),
 
-    // Carretera (no usada todavía)
+    // Carretera (por ahora no usada)
     road_horizontal: new Image(),
     road_vertical: new Image(),
     road_curve: new Image(),
@@ -62,7 +62,6 @@ let car = {
     y: 300,
     width: 50,
     height: 50,
-    angle: 90, // <--- Corregido: el sprite "up" apunta a la izquierda, ahora apunta hacia arriba
     speed: 0,
     maxSpeed: 5,
     accel: 0.15,
@@ -75,58 +74,36 @@ let keys = {};
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
-// ---------- ACTUALIZAR MOVIMIENTO DEL CARRO ----------
+// ---------- ACTUALIZAR MOVIMIENTO ----------
 function updateCar() {
-
-    // Acelerar
+    // Movemos y cambiamos sprite según tecla
     if (keys["ArrowUp"]) {
-        car.speed += car.accel;
-        if (car.speed > car.maxSpeed) car.speed = car.maxSpeed;
+        car.sprite = images.car1_up;
+        car.y -= car.maxSpeed;
     }
-
-    // Frenar
     if (keys["ArrowDown"]) {
-        car.speed -= car.accel;
-        if (car.speed < -car.maxSpeed / 2) car.speed = -car.maxSpeed / 2;
+        car.sprite = images.car1_down;
+        car.y += car.maxSpeed;
     }
-
-    // Gira izquierda
     if (keys["ArrowLeft"]) {
-        car.angle -= 3;
+        car.sprite = images.car1_left;
+        car.x -= car.maxSpeed;
     }
-
-    // Gira derecha
     if (keys["ArrowRight"]) {
-        car.angle += 3;
+        car.sprite = images.car1_right;
+        car.x += car.maxSpeed;
     }
-
-    // Fricción natural
-    if (!keys["ArrowUp"] && !keys["ArrowDown"]) {
-        if (car.speed > 0) car.speed -= car.friction;
-        if (car.speed < 0) car.speed += car.friction;
-        if (Math.abs(car.speed) < 0.05) car.speed = 0;
-    }
-
-    // Movimiento según ángulo
-    const rad = car.angle * Math.PI / 180;
-    car.x += Math.cos(rad) * car.speed;
-    car.y += Math.sin(rad) * car.speed;
 }
 
 // ---------- DIBUJAR CARRO ----------
 function drawCar() {
-
     // Sombra
     ctx.globalAlpha = 0.45;
     ctx.drawImage(images.shadow, car.x - 10, car.y + 25, 60, 30);
     ctx.globalAlpha = 1;
 
-    // Rotación
-    ctx.save();
-    ctx.translate(car.x + car.width / 2, car.y + car.height / 2);
-    ctx.rotate(car.angle * Math.PI / 180);
-    ctx.drawImage(car.sprite, -car.width / 2, -car.height / 2, car.width, car.height);
-    ctx.restore();
+    // Auto
+    ctx.drawImage(car.sprite, car.x, car.y, car.width, car.height);
 }
 
 // ---------- LOOP PRINCIPAL ----------
