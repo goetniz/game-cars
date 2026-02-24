@@ -1,34 +1,56 @@
-<script>
-// ---------- ESPERAR CARGA DE IMÁGENES ----------
-function loadImages(imageObj, callback){
-    const keys = Object.keys(imageObj);
-    let loaded = 0;
-    keys.forEach(k=>{
-        imageObj[k].onload = ()=>{
-            loaded++;
-            if(loaded === keys.length) callback();
-        }
-    });
-}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Racing Game</title>
+<style>
+body { margin:0; padding:0; background:#000; display:flex; justify-content:center; align-items:center; height:100vh; color:#fff; font-family:sans-serif; }
+#gameCanvas { display:none; background:#333; }
+#loadingScreen { text-align:center; }
+#loadingScreen img { max-width:400px; width:80%; height:auto; margin-bottom:20px; border:3px solid #fff; }
+#loadingScreen h1 { font-size:2em; margin-bottom:20px; }
+#loadingScreen p { font-size:1.2em; color:#ff0; }
+</style>
+</head>
+<body>
 
-// ---------- PANTALLA DE PORTADA ----------
-const loadingScreen = document.getElementById("loadingScreen");
+<div id="loadingScreen">
+    <img src="portada.png.png" alt="Portada del juego">
+    <h1>Racing Game</h1>
+    <p>Presiona ENTER para empezar</p>
+</div>
+
+<canvas id="gameCanvas" width="768" height="512"></canvas>
+
+<script>
+// ---------- VARIABLES GENERALES ----------
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-
+const tileSize = 64;
 let gameStarted = false;
-
-// Espera ENTER solo después de que se carguen las imágenes
-document.addEventListener("keydown", e=>{
-    if(e.key === "Enter" && !gameStarted && imagesLoaded){
-        gameStarted = true;
-        loadingScreen.style.display="none";
-        canvas.style.display="block";
-        loop();
-    }
-});
-
+let keys = {};
 let imagesLoaded = false;
+
+// ---------- MAPA ----------
+const map = [
+    ["start","road_horizontal","road_horizontal","road_horizontal","road_T","road_vertical","road_vertical","road_vertical","road_curve","road_horizontal","road_horizontal","finish"],
+    ["road_vertical","tree","tree","road_vertical","road_vertical","road_vertical","road_vertical","rock","road_vertical","road_vertical","road_vertical","road_vertical"],
+    ["road_vertical","tree","tree","road_vertical","road_curve","road_horizontal","road_horizontal","road_horizontal","road_T","road_vertical","rock","road_vertical"],
+    ["road_T","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_T"],
+    ["road_vertical","rock","road_vertical","tree","road_vertical","road_vertical","road_vertical","road_curve","road_vertical","tree","road_vertical","road_vertical"],
+    ["road_vertical","road_vertical","road_vertical","road_vertical","road_T","road_horizontal","road_horizontal","road_horizontal","road_cross","road_vertical","road_vertical","road_vertical"],
+    ["road_curve","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_horizontal","road_curve","road_vertical","road_vertical","road_vertical","road_curve","road_horizontal"],
+    ["road_cross","road_horizontal","road_horizontal","road_T","road_vertical","road_vertical","road_vertical","road_curve","road_horizontal","road_horizontal","road_horizontal","road_cross"]
+];
+const passableTiles = ["road_horizontal","road_vertical","road_curve","road_T","road_cross","start","finish"];
+
+// ---------- SPAWN POINTS ----------
+const spawnPoints = [];
+map.forEach((row,r)=>{
+    row.forEach((tile,c)=>{
+        if(passableTiles.includes(tile)) spawnPoints.push({x:c*tileSize+8,y:r*tileSize+8});
+    });
+});
 
 // ---------- CARGA DE IMÁGENES ----------
 const assetsPath = "assets/";
@@ -66,9 +88,174 @@ images.road_border.src = assetsPath + "decoration/road_border.png.png";
 
 images.explosion.src = assetsPath + "effects/explosion.png.png";
 
-// --- Cuando todas las imágenes carguen, activamos ENTER ---
-loadImages(images, ()=>{
-    imagesLoaded = true;
-    console.log("¡Todas las imágenes cargadas! Presiona ENTER para empezar.");
+// ---------- ESPERAR CARGA ----------
+function loadImages(imageObj, callback){
+    const keys = Object.keys(imageObj);
+    let loaded = 0;
+    keys.forEach(k=>{
+        imageObj[k].onload = ()=>{
+            loaded++;
+            if(loaded === keys.length) callback();
+        }
+    });
+}
+loadImages(images, ()=>{ imagesLoaded=true; console.log("Imágenes cargadas. Presiona ENTER."); });
+
+// ---------- CARROS ----------
+let playerCar = {
+    x: spawnPoints[0].x, y: spawnPoints[0].y, width:50, height:50, maxSpeed:5, sprite:images.car1_up, alive:true
+};
+let aiCars = [
+    {x:spawnPoints[1].x, y:spawnPoints[1].y, width:50, height:50, speed:2, sprite:images.car2_right, alive:true},
+    {x:spawnPoints[2].x, y:spawnPoints[2].y, width:50, height:50, speed:2, sprite:images.car1_right, alive:true},
+    {x:spawnPoints[3].x, y:spawnPoints[3].y, width:50, height:50, speed:2, sprite:images.car2_right, alive:true}
+];
+let aiDirections = aiCars.map(ai=>({dx:ai.speed,dy:0,sprite:ai.sprite}));
+
+// ---------- TECLAS ----------
+document.addEventListener("keydown", e=>keys[e.key]=true);
+document.addEventListener("keyup", e=>keys[e.key]=false);
+
+// ---------- COMANDO SECRETO ----------
+let cheatSequence=[];
+document.addEventListener("keydown", e=>{
+    if("1579".includes(e.key)){
+        cheatSequence.push(e.key);
+        if(cheatSequence.slice(-4).join("")==="1579"){
+            aiCars.forEach(ai=>ai.alive=false);
+            setTimeout(()=>aiCars.forEach((ai,i)=>respawnAI(ai,i)),1000);
+        }
+    }
+});
+
+// ---------- FUNCIONES ----------
+function isPassable(x,y){
+    const col=Math.floor(x/tileSize);
+    const row=Math.floor(y/tileSize);
+    if(row<0||row>=map.length||col<0||col>=map[0].length) return false;
+    return passableTiles.includes(map[row][col]);
+}
+
+function updatePlayer(){
+    if(!playerCar.alive) return;
+    let nextX=playerCar.x, nextY=playerCar.y;
+    if(keys["ArrowUp"]){playerCar.sprite=images.car1_up; nextY-=playerCar.maxSpeed;}
+    if(keys["ArrowDown"]){playerCar.sprite=images.car1_down; nextY+=playerCar.maxSpeed;}
+    if(keys["ArrowLeft"]){playerCar.sprite=images.car1_left; nextX-=playerCar.maxSpeed;}
+    if(keys["ArrowRight"]){playerCar.sprite=images.car1_right; nextX+=playerCar.maxSpeed;}
+    const corners=[[nextX,nextY],[nextX+playerCar.width,nextY],[nextX,nextY+playerCar.height],[nextX+playerCar.width,nextY+playerCar.height]];
+    if(corners.every(c=>isPassable(c[0],c[1]))){
+        playerCar.x=nextX; playerCar.y=nextY;
+    }
+}
+
+function respawnAI(aiCar, spawnIndex){
+    const spawn=spawnPoints[spawnIndex%spawnPoints.length];
+    aiCar.x=spawn.x; aiCar.y=spawn.y; aiCar.alive=true;
+    aiDirections[aiCars.indexOf(aiCar)]={dx:aiCar.speed,dy:0,sprite:aiCar.sprite};
+}
+
+function respawnPlayer(){
+    let safeSpawns = spawnPoints.filter(sp=>{
+        return aiCars.every(ai=>{
+            const dx=Math.abs(sp.x-ai.x), dy=Math.abs(sp.y-ai.y);
+            return dx>tileSize*2 && dy>tileSize*2;
+        });
+    });
+    const spawn = safeSpawns[Math.floor(Math.random()*safeSpawns.length)];
+    playerCar.x=spawn.x; playerCar.y=spawn.y; playerCar.alive=true;
+    playerCar.sprite=images.car1_up;
+}
+
+function updateAI(aiCar, aiIndex){
+    if(!aiCar.alive) return;
+    const dx = playerCar.x - aiCar.x;
+    const dy = playerCar.y - aiCar.y;
+    let moveX=0, moveY=0, spriteDir=aiCar.sprite;
+    if(Math.abs(dx)>Math.abs(dy)){
+        moveX = dx>0 ? aiCar.speed : -aiCar.speed;
+        spriteDir = dx>0 ? images.car2_right : images.car2_left;
+    } else {
+        moveY = dy>0 ? aiCar.speed : -aiCar.speed;
+        spriteDir = dy>0 ? images.car2_down : images.car2_up;
+    }
+    const nextX=aiCar.x+moveX, nextY=aiCar.y+moveY;
+    const corners=[[nextX,nextY],[nextX+aiCar.width,nextY],[nextX,nextY+aiCar.height],[nextX+aiCar.width,nextY+aiCar.height]];
+    if(corners.every(c=>isPassable(c[0],c[1]))){
+        aiCar.x=nextX; aiCar.y=nextY; aiCar.sprite=spriteDir;
+    } else {
+        const dirs=[
+            {dx:aiCar.speed,dy:0,sprite:images.car2_right},
+            {dx:-aiCar.speed,dy:0,sprite:images.car2_left},
+            {dx:0,dy:aiCar.speed,sprite:images.car2_down},
+            {dx:0,dy:-aiCar.speed,sprite:images.car2_up}
+        ];
+        const validDirs = dirs.filter(d=>{
+            const nx=aiCar.x+d.dx, ny=aiCar.y+d.dy;
+            return [[nx,ny],[nx+aiCar.width,ny],[nx,ny+aiCar.height],[nx+aiCar.width,ny+aiCar.height]].every(c=>isPassable(c[0],c[1]));
+        });
+        if(validDirs.length>0){
+            const d = validDirs[Math.floor(Math.random()*validDirs.length)];
+            aiDirections[aiIndex]=d;
+            aiCar.x+=d.dx; aiCar.y+=d.dy; aiCar.sprite=d.sprite;
+        }
+    }
+
+    if(aiCar.alive && playerCar.alive){
+        const collide = !(playerCar.x + playerCar.width < aiCar.x ||
+                          playerCar.x > aiCar.x + aiCar.width ||
+                          playerCar.y + playerCar.height < aiCar.y ||
+                          playerCar.y > aiCar.y + aiCar.height);
+        if(collide){
+            playerCar.alive=false;
+            setTimeout(respawnPlayer,1000);
+        }
+    }
+}
+
+function drawMap(){
+    for(let row=0; row<map.length; row++){
+        for(let col=0; col<map[row].length; col++){
+            const tile=map[row][col];
+            if(images[tile]) ctx.drawImage(images[tile], col*tileSize, row*tileSize, tileSize, tileSize);
+            ctx.strokeStyle="red";
+            ctx.strokeRect(col*tileSize,row*tileSize,tileSize,tileSize);
+        }
+    }
+}
+
+function drawCar(car){
+    if(!car.alive){
+        ctx.drawImage(images.explosion, car.x, car.y, car.width, car.height);
+        return;
+    }
+    ctx.globalAlpha=0.45;
+    ctx.drawImage(images.shadow, car.x-10, car.y+25, 60,30);
+    ctx.globalAlpha=1;
+    ctx.drawImage(car.sprite, car.x, car.y, car.width, car.height);
+}
+
+// ---------- LOOP ----------
+function loop(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawMap();
+    updatePlayer();
+    aiCars.forEach((ai,i)=>updateAI(ai,i));
+    drawCar(playerCar);
+    aiCars.forEach(ai=>drawCar(ai));
+    requestAnimationFrame(loop);
+}
+
+// ---------- INICIO DEL JUEGO CON ENTER ----------
+document.addEventListener("keydown", e=>{
+    if(e.key==="Enter" && !gameStarted && imagesLoaded){
+        gameStarted=true;
+        document.getElementById("loadingScreen").style.display="none";
+        canvas.style.display="block";
+        loop();
+    }
 });
 </script>
+
+</body>
+</html>
